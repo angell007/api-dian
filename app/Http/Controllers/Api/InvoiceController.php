@@ -42,8 +42,6 @@ class InvoiceController extends Controller
             'request' => '\n' . json_encode($request->all(), JSON_PRETTY_PRINT),
         ]);
 
-        dd('Finalizado');
-
         $healt_sector = is_array($request->healt_sector ?? null) ? $request->healt_sector : null;
 
         Log::info('Healt sector - Factura NoPos Mipres', [
@@ -141,8 +139,6 @@ class InvoiceController extends Controller
         $sendBillAsync->To = $company->software->url;
         $sendBillAsync->fileName = "fv{$request->file}.xml";
         $sendBillAsync->contentFile = $this->zipBase64($company, $resolution, $signedInvoice, $request->file);
-
-        dd('Finalizado');
 
         // Log::info('data!',['request'=>$request->all()]);
 
