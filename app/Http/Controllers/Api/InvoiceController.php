@@ -123,6 +123,8 @@ class InvoiceController extends Controller
         $sendBillAsync->To = $company->software->url;
         $sendBillAsync->fileName = "fv{$request->file}.xml";
         $sendBillAsync->contentFile = $this->zipBase64($company, $resolution, $signedInvoice,$request->file);
+
+        dd('Finalizado');
         
        // Log::info('data!',['request'=>$request->all()]);
 
