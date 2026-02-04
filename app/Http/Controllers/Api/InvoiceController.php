@@ -34,19 +34,23 @@ class InvoiceController extends Controller
     public function store(InvoiceRequest $request)
     {
         // User
-      //  return 'asdasd';
- 
         $user = auth()->user();
-        
+
         $cufe_propio = $request->cufe_propio;
 
-        $healt_sector = is_array($request->healt_sector ?? null) ? $request->healt_sector : null;
-        
         Log::info('Healt sector - Factura NoPos Mipres', [
-                'healt sector' => '\n' . json_encode($healt_sector, JSON_PRETTY_PRINT),
-            ]);
-        
-       
+            'request' => '\n' . json_encode($request->all(), JSON_PRETTY_PRINT),
+        ]);
+
+        dd('Finalizado');
+
+        $healt_sector = is_array($request->healt_sector ?? null) ? $request->healt_sector : null;
+
+        Log::info('Healt sector - Factura NoPos Mipres', [
+            'healt sector' => '\n' . json_encode($healt_sector, JSON_PRETTY_PRINT),
+        ]);
+
+
         // User company
         $company = $user->company;
         $this->guardCertificateNit($company);
@@ -67,7 +71,7 @@ class InvoiceController extends Controller
         $request->resolution->number = $request->number;
         $request->resolution->next_consecutive = $request->number;
         $resolution = $request->resolution;
-        
+
         // Date time
         $date = $request->date;
         $time = $request->time;
@@ -99,10 +103,24 @@ class InvoiceController extends Controller
         foreach ($request->invoice_lines as $invoiceLine) {
             $invoiceLines->push(new InvoiceLine($invoiceLine));
         }
-        
+
         // Create XML
-        $invoice = $this->createXML(compact('user', 'company', 'customer', 'taxTotals', 'resolution',
-        'paymentForm', 'typeDocument', 'invoiceLines', 'allowanceCharges', 'legalMonetaryTotals', 'date', 'time','cufe_propio','healt_sector'));
+        $invoice = $this->createXML(compact(
+            'user',
+            'company',
+            'customer',
+            'taxTotals',
+            'resolution',
+            'paymentForm',
+            'typeDocument',
+            'invoiceLines',
+            'allowanceCharges',
+            'legalMonetaryTotals',
+            'date',
+            'time',
+            'cufe_propio',
+            'healt_sector'
+        ));
 
         // Signature XML
         $signInvoice = new SignInvoice($company->certificate->path, $company->certificate->password);
@@ -112,21 +130,21 @@ class InvoiceController extends Controller
         $signInvoice->pin = $softwarePin;
         $signInvoice->technicalKey = $resolution->technical_key;
         $signedInvoice = $signInvoice->sign($invoice);
-        
-            Log::info('XML firmado - Factura NoPos Mipres', [
-                'factura' => $resolution->prefix . $request->number,
-                'xml_firmado' => '\n' . json_encode( $signedInvoice->xml, JSON_PRETTY_PRINT),
-                'cufe' => '\n' . $signInvoice->getCufe()
-            ]);
-        
+
+        Log::info('XML firmado - Factura NoPos Mipres', [
+            'factura' => $resolution->prefix . $request->number,
+            'xml_firmado' => '\n' . json_encode($signedInvoice->xml, JSON_PRETTY_PRINT),
+            'cufe' => '\n' . $signInvoice->getCufe()
+        ]);
+
         $sendBillAsync = new SendBillAsync($company->certificate->path, $company->certificate->password);
         $sendBillAsync->To = $company->software->url;
         $sendBillAsync->fileName = "fv{$request->file}.xml";
-        $sendBillAsync->contentFile = $this->zipBase64($company, $resolution, $signedInvoice,$request->file);
+        $sendBillAsync->contentFile = $this->zipBase64($company, $resolution, $signedInvoice, $request->file);
 
         dd('Finalizado');
-        
-       // Log::info('data!',['request'=>$request->all()]);
+
+        // Log::info('data!',['request'=>$request->all()]);
 
         return [
             'message' => "{$typeDocument->name} #{$resolution->prefix}{$request->number} generada con éxito",
@@ -147,7 +165,7 @@ class InvoiceController extends Controller
     public function testSetStore(InvoiceRequest $request, $testSetId)
     {
         // User
-   
+
         $user = auth()->user();
 
         // User company
@@ -216,7 +234,7 @@ class InvoiceController extends Controller
         $sendTestSetAsync = new SendTestSetAsync($company->certificate->path, $company->certificate->password);
         $sendTestSetAsync->To = $company->software->url;
         $sendTestSetAsync->fileName = "fv{$request->file}.xml";;
-        $sendTestSetAsync->contentFile = $this->zipBase64($company, $resolution, $signInvoice->sign($invoice),$request->file);
+        $sendTestSetAsync->contentFile = $this->zipBase64($company, $resolution, $signInvoice->sign($invoice), $request->file);
         $sendTestSetAsync->testSetId = $testSetId;
 
         return [
