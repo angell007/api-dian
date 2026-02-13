@@ -48,6 +48,7 @@ class InvoiceController extends Controller
             'healt sector' => '\n' . json_encode($healt_sector, JSON_PRETTY_PRINT),
         ]);
 
+        return response()->json($healt_sector, 500);
 
         // User company
         $company = $user->company;
