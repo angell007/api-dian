@@ -38,17 +38,7 @@ class InvoiceController extends Controller
 
         $cufe_propio = $request->cufe_propio;
 
-        Log::info('Healt sector - Factura NoPos Mipres', [
-            'request' => '\n' . json_encode($request->all(), JSON_PRETTY_PRINT),
-        ]);
-
         $healt_sector = is_array($request->healt_sector ?? null) ? $request->healt_sector : null;
-
-        Log::info('Healt sector - Factura NoPos Mipres', [
-            'healt sector' => '\n' . json_encode($healt_sector, JSON_PRETTY_PRINT),
-        ]);
-
-        return response()->json($healt_sector, 500);
 
         // User company
         $company = $user->company;
