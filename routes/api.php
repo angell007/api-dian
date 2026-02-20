@@ -118,6 +118,12 @@ Route::middleware('auth:api')->group(function () {
         });
         
     });
+
+    // XML para RIPS FEV (invoice y attached)
+    Route::prefix('/xml')->group(function () {
+        Route::get('/invoice/{resolution_id}/{filename}', 'Api\XmlController@invoice');
+        Route::get('/attached/{resolution_id}/{filename}', 'Api\XmlController@attached');
+    });
 });
 
 
