@@ -126,12 +126,13 @@ class InvoiceController extends Controller
             'cufe' => '\n' . $signInvoice->getCufe()
         ]);
 
+        return response()->json('error', 500);
+
         $sendBillAsync = new SendBillAsync($company->certificate->path, $company->certificate->password);
         $sendBillAsync->To = $company->software->url;
         $sendBillAsync->fileName = "fv{$request->file}.xml";
         $sendBillAsync->contentFile = $this->zipBase64($company, $resolution, $signedInvoice, $request->file);
 
-        // Log::info('data!',['request'=>$request->all()]);
 
         return [
             'message' => "{$typeDocument->name} #{$resolution->prefix}{$request->number} generada con éxito",
