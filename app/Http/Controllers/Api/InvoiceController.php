@@ -120,14 +120,6 @@ class InvoiceController extends Controller
         $signInvoice->technicalKey = $resolution->technical_key;
         $signedInvoice = $signInvoice->sign($invoice);
 
-        Log::info('XML firmado - Factura NoPos Mipres', [
-            'factura' => $resolution->prefix . $request->number,
-            'xml_firmado' => '\n' . json_encode($signedInvoice->xml, JSON_PRETTY_PRINT),
-            'cufe' => '\n' . $signInvoice->getCufe()
-        ]);
-
-        return response()->json('error', 500);
-
         $sendBillAsync = new SendBillAsync($company->certificate->path, $company->certificate->password);
         $sendBillAsync->To = $company->software->url;
         $sendBillAsync->fileName = "fv{$request->file}.xml";
