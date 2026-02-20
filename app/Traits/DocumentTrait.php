@@ -102,19 +102,24 @@ trait DocumentTrait
         $nameZip = $this->getFileName($resolution, $nombre, 6, '.zip');
 
 
-        if (file_exists(storage_path("app/xml/{$resolution->company_id}/{$resolution->id}/{$nameXML}"))) {
-            $ruta = storage_path("app/xml/{$resolution->company_id}/{$resolution->id}/{$nameXML}");
+        $xmlPath = storage_path("app/xml/{$resolution->company_id}/{$resolution->id}/{$nameXML}");
+        $fileExists = file_exists($xmlPath);
+
+        if ($fileExists) {
+            $ruta = $xmlPath;
             header('Content-type:application/json');
             echo http_response_code(406) ? json_encode([
                 'message' => "archivo existente ",
-                'ruta' =>  str_replace("/", '/', $ruta)
+                'ruta' => str_replace("/", '/', $ruta)
             ]) : http_response_code(406);
-
         }
 
         $this->pathZIP = "app/zip/{$resolution->company_id}/{$resolution->id}/{$nameZip}";
 
-        Storage::put("xml/{$resolution->company_id}/{$resolution->id}/{$nameXML}", $sign->xml);
+        // No sobrescribir XML existente: preserva sección Sector Salud (CustomTagGeneral/Interoperabilidad)
+        if (!$fileExists) {
+            Storage::put("xml/{$resolution->company_id}/{$resolution->id}/{$nameXML}", $sign->xml);
+        }
 
         if (!Storage::has($dir)) {
             Storage::makeDirectory($dir);
