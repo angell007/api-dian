@@ -25,7 +25,10 @@ class InvoiceRequest extends FormRequest
     public function rules()
     {
         $this->resolution = auth()->user()->company->resolutions->where('id', $this->resolution_id)->first();
-
+        // #region agent log
+        $logPath = base_path('storage/logs/debug-invoice.log');
+        @file_put_contents($logPath, json_encode(['sessionId'=>'9a1bda','runId'=>'InvoiceRequest','hypothesisId'=>'H1-resolution-lookup','location'=>'InvoiceRequest.php:rules','message'=>'Resolution lookup','data'=>['resolution_id'=>$this->resolution_id??null,'resolution_found'=>($this->resolution!==null),'company_id'=>auth()->user()->company->id??null],'timestamp'=>(int)(microtime(true)*1000)]) . "\n", FILE_APPEND | LOCK_EX);
+        // #endregion
         return [
             // Document
             'type_document_id' => [

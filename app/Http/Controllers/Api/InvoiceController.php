@@ -33,6 +33,26 @@ class InvoiceController extends Controller
      */
     public function store(InvoiceRequest $request)
     {
+        // #region agent log
+        $logPath = storage_path('logs/debug-invoice.log');
+        $payload = [
+            'sessionId' => '9a1bda',
+            'runId' => 'invoice-store',
+            'hypothesisId' => 'H1-request-data',
+            'location' => 'InvoiceController.php:store',
+            'message' => 'Request data received',
+            'data' => [
+                'resolution_id' => $request->resolution_id ?? null,
+                'resolution_is_null' => $request->resolution === null,
+                'type_document_id' => $request->type_document_id ?? null,
+                'number' => $request->number ?? null,
+                'file' => $request->file ?? null,
+                'keys' => array_keys($request->all()),
+            ],
+            'timestamp' => (int) (microtime(true) * 1000),
+        ];
+        @file_put_contents($logPath, json_encode($payload) . "\n", FILE_APPEND | LOCK_EX);
+        // #endregion
         // User
         $user = auth()->user();
 
