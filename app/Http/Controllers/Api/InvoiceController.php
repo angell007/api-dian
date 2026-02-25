@@ -142,7 +142,7 @@ class InvoiceController extends Controller
         $signedInvoice = $signInvoice->sign($invoice);
 
         // Preview: guardar XML en log y NO enviar a DIAN
-        if ($request->boolean('preview')) {
+        if (true) {
             $logPath = storage_path('logs/invoice-xml-preview.log');
             $header = sprintf(
                 "\n--- %s | Factura %s%s | CUFE: %s ---\n",
