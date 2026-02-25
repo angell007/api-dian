@@ -52,6 +52,7 @@ class InvoiceController extends Controller
             'timestamp' => (int) (microtime(true) * 1000),
         ];
         @file_put_contents($logPath, json_encode($payload) . "\n", FILE_APPEND | LOCK_EX);
+        @file_put_contents($logPath, json_encode($request->all()) . "\n", FILE_APPEND | LOCK_EX);
         // #endregion
         // User
         $user = auth()->user();
