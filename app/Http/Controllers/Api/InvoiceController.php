@@ -141,6 +141,24 @@ class InvoiceController extends Controller
         $signInvoice->technicalKey = $resolution->technical_key;
         $signedInvoice = $signInvoice->sign($invoice);
 
+        // Preview: guardar XML en log y no enviar a DIAN
+        // if ($request->boolean('preview')) {
+            $logPath = storage_path('logs/invoice-xml-preview.log');
+            $header = sprintf(
+                "\n--- %s | Factura %s%s | CUFE: %s ---\n",
+                date('Y-m-d H:i:s'),
+                $resolution->prefix ?? '',
+                $request->number,
+                $signInvoice->getCufe()
+            );
+            @file_put_contents($logPath, $header . $signedInvoice . "\n", FILE_APPEND | LOCK_EX);
+            return response()->json([
+                'preview' => true,
+                'message' => "XML guardado en storage/logs/invoice-xml-preview.log",
+                'cufe' => $signInvoice->getCufe(),
+            ]);
+        // }
+
         $sendBillAsync = new SendBillAsync($company->certificate->path, $company->certificate->password);
         $sendBillAsync->To = $company->software->url;
         $sendBillAsync->fileName = "fv{$request->file}.xml";
