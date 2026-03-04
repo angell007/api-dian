@@ -17,6 +17,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\InvoiceRequest;
 use Stenfrank\UBL21dian\XAdES\SignInvoice;
 use Stenfrank\UBL21dian\Templates\SOAP\SendBillAsync;
+use Stenfrank\UBL21dian\Templates\SOAP\SendBillSync;
 use Stenfrank\UBL21dian\Templates\SOAP\SendTestSetAsync;
 use Illuminate\Support\Facades\Log;
 
@@ -122,17 +123,24 @@ class InvoiceController extends Controller
         $uuidNodes = $dom->getElementsByTagName('UUID');
         $cufe = ($uuidNodes->length > 0) ? trim($uuidNodes->item(0)->nodeValue ?? '') : '';
 
-        $sendBillAsync = new SendBillAsync($company->certificate->path, $company->certificate->password);
-        $sendBillAsync->To = $company->software->url;
-        $sendBillAsync->fileName = "fv{$request->file}.xml";
-        $sendBillAsync->contentFile = $this->zipBase64($company, $resolution, $signedInvoice, $request->file);
+        $useSync = filter_var(env('DIAN_USE_SYNC', false), FILTER_VALIDATE_BOOLEAN);
 
-        $client = $sendBillAsync->signToSend();
+        if ($useSync) {
+            $sendBill = new SendBillSync($company->certificate->path, $company->certificate->password);
+        } else {
+            $sendBill = new SendBillAsync($company->certificate->path, $company->certificate->password);
+        }
+        $sendBill->To = $company->software->url;
+        $sendBill->fileName = "fv{$request->file}.xml";
+        $sendBill->contentFile = $this->zipBase64($company, $resolution, $signedInvoice, $request->file);
+
+        $client = $sendBill->signToSend();
 
         try {
             $responseDian = $client->getResponseToObject();
 
-            Log::channel('single')->debug('DIAN SendBillAsync response', [
+            Log::channel('single')->debug('DIAN SendBill response', [
+                'mode' => $useSync ? 'Sync' : 'Async',
                 'response' => json_encode($responseDian, JSON_PRETTY_PRINT),
             ]);
         } catch (\Exception $e) {
@@ -156,12 +164,49 @@ class InvoiceController extends Controller
             ], 422);
         }
 
-        // Extraer ZipKey, errores y detectar SOAP Fault de la respuesta DIAN
+        // Respuesta SendBillSync (síncrono)
+        if ($useSync) {
+            $syncResult = $this->getSendBillSyncResult($responseDian);
+            $isValid = ($syncResult->IsValid ?? '') === 'true';
+            $statusDesc = $syncResult->StatusDescription ?? '';
+            $xmlDocKeyVal = $syncResult->XmlDocumentKey ?? null;
+            $xmlDocKey = is_object($xmlDocKeyVal)
+                ? ($xmlDocKeyVal->_value ?? (string) $xmlDocKeyVal)
+                : $xmlDocKeyVal;
+            $cufeFinal = $xmlDocKey ? trim((string) $xmlDocKey) : $cufe;
+
+            if (!$isValid) {
+                return response()->json([
+                    'titulo' => 'Error DIAN',
+                    'mensaje' => $statusDesc ?: 'Documento rechazado por la DIAN',
+                    'tipo' => 'error',
+                    'data' => [
+                        'Json' => [
+                            'message' => $statusDesc,
+                            'cufe' => $cufe,
+                            'ResponseDian' => $responseDian,
+                            'ZipBase64Bytes' => base64_encode($this->getZIP()),
+                        ],
+                    ],
+                ], 422);
+            }
+
+            return [
+                'message' => "{$typeDocument->name} #{$resolution->prefix}{$request->number} generada con éxito",
+                'cufe' => $cufeFinal,
+                'zip_key' => null,
+                'dian_errors' => null,
+                'consulta_estado' => null,
+                'ResponseDian' => $responseDian,
+                'ZipBase64Bytes' => base64_encode($this->getZIP()),
+            ];
+        }
+
+        // Respuesta SendBillAsync (asíncrono por lotes)
         $zipKey = $this->extractZipKeyFromDianResponse($responseDian);
         $dianErrors = $this->extractDianErrorsFromResponse($responseDian);
         $soapFault = $this->extractSoapFault($responseDian);
 
-        // Log de la respuesta cruda para auditoría
         Log::channel('single')->debug('DIAN SendBillAsync response', [
             'file' => "fv{$request->file}.xml",
             'cufe' => $cufe,
@@ -171,7 +216,6 @@ class InvoiceController extends Controller
             'raw_response' => $client->getResponse(),
         ]);
 
-        // Si la DIAN devolvió error: respuesta 422 para evitar falsos positivos
         if ($soapFault) {
             return response()->json([
                 'titulo' => 'Error DIAN',
@@ -269,6 +313,21 @@ class InvoiceController extends Controller
         }
         $asyncResponse = $body->SendBillAsyncResponse ?? null;
         return $asyncResponse->SendBillAsyncResult ?? (object) [];
+    }
+
+    private function getSendBillSyncResult($response)
+    {
+        $body = isset($response->Envelope) ? ($response->Envelope->Body ?? null) : ($response->Body ?? null);
+        if (!$body) {
+            return (object) [];
+        }
+        $syncResponse = $body->SendBillSyncResponse ?? null;
+        $result = $syncResponse->SendBillSyncResult ?? null;
+        if (!$result) {
+            return (object) [];
+        }
+        // DianResponse anidado o campos directos en SendBillSyncResult
+        return $result->DianResponse ?? $result;
     }
 
     /**
