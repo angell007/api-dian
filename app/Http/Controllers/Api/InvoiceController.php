@@ -33,27 +33,6 @@ class InvoiceController extends Controller
      */
     public function store(InvoiceRequest $request)
     {
-        // #region agent log
-        $logPath = storage_path('logs/debug-invoice.log');
-        $payload = [
-            'sessionId' => '9a1bda',
-            'runId' => 'invoice-store',
-            'hypothesisId' => 'H1-request-data',
-            'location' => 'InvoiceController.php:store',
-            'message' => 'Request data received',
-            'data' => [
-                'resolution_id' => $request->resolution_id ?? null,
-                'resolution_is_null' => $request->resolution === null,
-                'type_document_id' => $request->type_document_id ?? null,
-                'number' => $request->number ?? null,
-                'file' => $request->file ?? null,
-                'keys' => array_keys($request->all()),
-            ],
-            'timestamp' => (int) (microtime(true) * 1000),
-        ];
-        @file_put_contents($logPath, json_encode($payload) . "\n", FILE_APPEND | LOCK_EX);
-        @file_put_contents($logPath, json_encode($request->all()) . "\n", FILE_APPEND | LOCK_EX);
-        // #endregion
         // User
         $user = auth()->user();
 
@@ -72,11 +51,9 @@ class InvoiceController extends Controller
         $customerAll = collect($request->customer);
         $customer = new User($customerAll->toArray());
 
-
         // Customer company
         $customer->company = new Company($customerAll->toArray());
-        //return response($customer);
-        //return [$customer];
+
         // Resolution
         $request->resolution->number = $request->number;
         $request->resolution->next_consecutive = $request->number;
@@ -141,33 +118,16 @@ class InvoiceController extends Controller
         $signInvoice->technicalKey = $resolution->technical_key;
         $signedInvoice = $signInvoice->sign($invoice);
 
-        // Preview: guardar XML en log y NO enviar a DIAN
-        if (true) {
-            $logPath = storage_path('logs/invoice-xml-preview.log');
-            $header = sprintf(
-                "\n--- %s | Factura %s%s | CUFE: %s ---\n",
-                date('Y-m-d H:i:s'),
-                $resolution->prefix ?? '',
-                $request->number,
-                $signInvoice->getCufe()
-            );
-            @file_put_contents($logPath, $header . $signInvoice->xml . "\n", FILE_APPEND | LOCK_EX);
-            return [
-                'preview' => true,
-                'message' => "XML guardado en storage/logs/invoice-xml-preview.log (no enviado a DIAN)",
-                'cufe' => $signInvoice->getCufe(),
-            ];
-        }
+        $cufe = '';
 
         $sendBillAsync = new SendBillAsync($company->certificate->path, $company->certificate->password);
         $sendBillAsync->To = $company->software->url;
         $sendBillAsync->fileName = "fv{$request->file}.xml";
         $sendBillAsync->contentFile = $this->zipBase64($company, $resolution, $signedInvoice, $request->file);
 
-
         return [
             'message' => "{$typeDocument->name} #{$resolution->prefix}{$request->number} generada con éxito",
-            'cufe' =>  $signInvoice->getCufe(),
+            'cufe' => $cufe,
             'ResponseDian' => $sendBillAsync->signToSend()->getResponseToObject(),
             'ZipBase64Bytes' => base64_encode($this->getZIP()),
         ];
