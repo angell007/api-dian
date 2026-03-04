@@ -40,6 +40,6 @@
         </ext:ExtensionContent>
     </ext:UBLExtension>
 
-    @if(!isset($healt_sector) || empty($healt_sector))
+    @if(!isset($healt_sector) || empty($healt_sector) || !is_array($healt_sector) || !isset($healt_sector['Codigo_Prestador']))
 </ext:UBLExtensions>
 @endif
