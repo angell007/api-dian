@@ -102,11 +102,16 @@ class CreditNoteController extends Controller
         $sendBillAsync = new SendBillAsync($company->certificate->path, $company->certificate->password);
         $sendBillAsync->To = $company->software->url;
         $sendBillAsync->fileName = "nc{$request->file}.xml";
-        $sendBillAsync->contentFile = $this->zipBase64($company, $resolution, $signCreditNote->sign($crediNote),$request->file);
+        $signedCreditNote = $signCreditNote->sign($crediNote);
+        $sendBillAsync->contentFile = $this->zipBase64($company, $resolution, $signedCreditNote, $request->file);
+
+        $dom = $signCreditNote->getDocument();
+        $uuidNodes = $dom->getElementsByTagName('UUID');
+        $cude = ($uuidNodes->length > 0) ? trim($uuidNodes->item(0)->nodeValue ?? '') : '';
 
         return [
             'message' => "{$typeDocument->name} #{$resolution->next_consecutive} generada con éxito",
-            'cude' =>  $signCreditNote->getCude(),
+            'cude' => $cude,
             'ResponseDian' => $sendBillAsync->signToSend()->getResponseToObject(),
             'ZipBase64Bytes' => base64_encode($this->getZIP()),
         ];
