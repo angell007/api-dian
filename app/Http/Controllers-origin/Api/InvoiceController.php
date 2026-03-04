@@ -112,23 +112,25 @@ class InvoiceController extends Controller
         $signInvoice->pin = $softwarePin;
         $signInvoice->technicalKey = $resolution->technical_key;
         $signedInvoice = $signInvoice->sign($invoice);
-        
-            Log::info('XML firmado - Factura NoPos Mipres', [
-                'factura' => $resolution->prefix . $request->number,
-                'xml_firmado' => '\n' . json_encode( $signedInvoice->xml, JSON_PRETTY_PRINT),
-                'cufe' => '\n' . $signInvoice->getCufe()
-            ]);
-        
+
+        $dom = $signInvoice->getDocument();
+        $uuidNodes = $dom->getElementsByTagName('UUID');
+        $cufe = ($uuidNodes->length > 0) ? trim($uuidNodes->item(0)->nodeValue ?? '') : '';
+
+        Log::info('XML firmado - Factura NoPos Mipres', [
+            'factura' => $resolution->prefix . $request->number,
+            'xml_firmado' => '\n' . json_encode($signedInvoice->xml ?? '', JSON_PRETTY_PRINT),
+            'cufe' => $cufe,
+        ]);
+
         $sendBillAsync = new SendBillAsync($company->certificate->path, $company->certificate->password);
         $sendBillAsync->To = $company->software->url;
         $sendBillAsync->fileName = "fv{$request->file}.xml";
-        $sendBillAsync->contentFile = $this->zipBase64($company, $resolution, $signedInvoice,$request->file);
-        
-       // Log::info('data!',['request'=>$request->all()]);
+        $sendBillAsync->contentFile = $this->zipBase64($company, $resolution, $signedInvoice, $request->file);
 
         return [
             'message' => "{$typeDocument->name} #{$resolution->prefix}{$request->number} generada con éxito",
-            'cufe' =>  $signInvoice->getCufe(),
+            'cufe' => $cufe,
             'ResponseDian' => $sendBillAsync->signToSend()->getResponseToObject(),
             'ZipBase64Bytes' => base64_encode($this->getZIP()),
         ];

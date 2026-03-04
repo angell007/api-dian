@@ -23,6 +23,7 @@ class StateController extends Controller
         $user = auth()->user();
 
         $getStatusZip = new GetStatusZip($user->company->certificate->path, $user->company->certificate->password);
+        $getStatusZip->To = $user->company->software->url;
         $getStatusZip->trackId = $trackId;
 
         return [
@@ -44,6 +45,7 @@ class StateController extends Controller
         $user = auth()->user();
 
         $getStatus = new GetStatus($user->company->certificate->path, $user->company->certificate->password);
+        $getStatus->To = $user->company->software->url;
         $getStatus->trackId = $trackId;
 
         return [
@@ -52,12 +54,13 @@ class StateController extends Controller
         ];
     }
     
-    public function numbering($accountCode,$accountCodeT,$softwareCode)
+    public function numbering($accountCode, $accountCodeT, $softwareCode)
     {
         // User
         $user = auth()->user();
 
         $getNumbering = new GetNumbering($user->company->certificate->path, $user->company->certificate->password);
+        $getNumbering->To = $user->company->software->url;
         $getNumbering->accountCode = $accountCode;
         $getNumbering->accountCodeT = $accountCodeT;
         $getNumbering->softwareCode = $softwareCode;
