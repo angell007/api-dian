@@ -118,18 +118,173 @@ class InvoiceController extends Controller
         $signInvoice->technicalKey = $resolution->technical_key;
         $signedInvoice = $signInvoice->sign($invoice);
 
-        $cufe = '';
+        $dom = $signInvoice->getDocument();
+        $uuidNodes = $dom->getElementsByTagName('UUID');
+        $cufe = ($uuidNodes->length > 0) ? trim($uuidNodes->item(0)->nodeValue ?? '') : '';
 
         $sendBillAsync = new SendBillAsync($company->certificate->path, $company->certificate->password);
         $sendBillAsync->To = $company->software->url;
         $sendBillAsync->fileName = "fv{$request->file}.xml";
         $sendBillAsync->contentFile = $this->zipBase64($company, $resolution, $signedInvoice, $request->file);
 
+        $client = $sendBillAsync->signToSend();
+
+        try {
+            $responseDian = $client->getResponseToObject();
+        } catch (\Exception $e) {
+            Log::channel('single')->error('DIAN SendBillAsync exception', [
+                'file' => "fv{$request->file}.xml",
+                'exception' => $e->getMessage(),
+                'raw_response' => $client->getResponse(),
+            ]);
+            return response()->json([
+                'titulo' => 'Error DIAN',
+                'mensaje' => 'La DIAN devolvió una respuesta inválida: ' . $e->getMessage(),
+                'tipo' => 'error',
+                'data' => [
+                    'Json' => [
+                        'message' => $e->getMessage(),
+                        'cufe' => $cufe,
+                        'ResponseDian' => null,
+                        'ZipBase64Bytes' => base64_encode($this->getZIP()),
+                    ],
+                ],
+            ], 422);
+        }
+
+        // Extraer ZipKey, errores y detectar SOAP Fault de la respuesta DIAN
+        $zipKey = $this->extractZipKeyFromDianResponse($responseDian);
+        $dianErrors = $this->extractDianErrorsFromResponse($responseDian);
+        $soapFault = $this->extractSoapFault($responseDian);
+
+        // Log de la respuesta cruda para auditoría
+        Log::channel('single')->debug('DIAN SendBillAsync response', [
+            'file' => "fv{$request->file}.xml",
+            'cufe' => $cufe,
+            'zip_key' => $zipKey,
+            'dian_errors' => $dianErrors,
+            'soap_fault' => $soapFault,
+            'raw_response' => $client->getResponse(),
+        ]);
+
+        // Si la DIAN devolvió error: respuesta 422 para evitar falsos positivos
+        if ($soapFault) {
+            return response()->json([
+                'titulo' => 'Error DIAN',
+                'mensaje' => $soapFault['message'],
+                'tipo' => 'error',
+                'data' => [
+                    'Json' => [
+                        'message' => $soapFault['message'],
+                        'cufe' => $cufe,
+                        'dian_errors' => $dianErrors,
+                        'ResponseDian' => $responseDian,
+                        'ZipBase64Bytes' => base64_encode($this->getZIP()),
+                    ],
+                ],
+            ], 422);
+        }
+
+        if ($dianErrors !== null && $dianErrors !== []) {
+            $errorText = is_string($dianErrors) ? $dianErrors : json_encode($dianErrors, JSON_UNESCAPED_UNICODE);
+            return response()->json([
+                'titulo' => 'Error DIAN - Documento rechazado',
+                'mensaje' => "La DIAN rechazó el documento: {$errorText}",
+                'tipo' => 'error',
+                'data' => [
+                    'Json' => [
+                        'message' => "La DIAN rechazó el documento: {$errorText}",
+                        'cufe' => $cufe,
+                        'zip_key' => $zipKey,
+                        'dian_errors' => $dianErrors,
+                        'ResponseDian' => $responseDian,
+                        'ZipBase64Bytes' => base64_encode($this->getZIP()),
+                    ],
+                ],
+            ], 422);
+        }
+
+        // Sin ZipKey = respuesta inesperada, no asumir éxito
+        if (empty($zipKey)) {
+            return response()->json([
+                'titulo' => 'Error DIAN - Respuesta inesperada',
+                'mensaje' => 'La DIAN no devolvió ZipKey. Revisar ResponseDian.',
+                'tipo' => 'error',
+                'data' => [
+                    'Json' => [
+                        'message' => 'La DIAN no devolvió ZipKey. Revisar ResponseDian.',
+                        'cufe' => $cufe,
+                        'dian_errors' => $dianErrors,
+                        'ResponseDian' => $responseDian,
+                        'ZipBase64Bytes' => base64_encode($this->getZIP()),
+                    ],
+                ],
+            ], 422);
+        }
+
         return [
             'message' => "{$typeDocument->name} #{$resolution->prefix}{$request->number} generada con éxito",
             'cufe' => $cufe,
-            'ResponseDian' => $sendBillAsync->signToSend()->getResponseToObject(),
+            'zip_key' => $zipKey,
+            'dian_errors' => null,
+            'consulta_estado' => "POST /api/ubl2.1/status/zip/{$zipKey}",
+            'ResponseDian' => $responseDian,
             'ZipBase64Bytes' => base64_encode($this->getZIP()),
+        ];
+    }
+
+    /**
+     * Extrae el ZipKey de la respuesta anidada de la DIAN.
+     */
+    private function extractZipKeyFromDianResponse($response): ?string
+    {
+        $result = $this->getSendBillAsyncResult($response);
+        return $result->ZipKey ?? null;
+    }
+
+    /**
+     * Extrae mensajes de error de la respuesta de la DIAN.
+     */
+    private function extractDianErrorsFromResponse($response): ?array
+    {
+        $result = $this->getSendBillAsyncResult($response);
+        $errorList = $result->ErrorMessageList ?? null;
+        $attrs = $errorList->_attributes ?? [];
+        $nil = is_array($attrs) ? ($attrs['nil'] ?? null) : ($attrs->nil ?? null);
+        if (!$errorList || $nil === 'true') {
+            return null;
+        }
+        return (array) $errorList;
+    }
+
+    private function getSendBillAsyncResult($response)
+    {
+        $body = isset($response->Envelope) ? ($response->Envelope->Body ?? null) : ($response->Body ?? null);
+        if (!$body) {
+            return (object) [];
+        }
+        $asyncResponse = $body->SendBillAsyncResponse ?? null;
+        return $asyncResponse->SendBillAsyncResult ?? (object) [];
+    }
+
+    /**
+     * Detecta SOAP Fault en la respuesta (error de conexión, servidor, etc.).
+     */
+    private function extractSoapFault($response): ?array
+    {
+        $body = isset($response->Envelope) ? ($response->Envelope->Body ?? null) : ($response->Body ?? null);
+        if (!$body || !isset($body->Fault)) {
+            return null;
+        }
+        $fault = $body->Fault;
+        $reason = $fault->Reason->FaultReasonText ?? $fault->faultstring ?? null;
+        $code = $fault->Code->Value ?? $fault->faultcode ?? null;
+        $msg = is_array($reason) ? ($reason[0] ?? $reason) : $reason;
+        $msg = $msg->_value ?? $msg ?? $fault->faultstring ?? null;
+        $message = is_object($msg) ? json_encode($msg) : trim((string) ($msg ?? 'Error desconocido en servicio DIAN'));
+        return [
+            'message' => $message,
+            'code' => $code,
         ];
     }
 
