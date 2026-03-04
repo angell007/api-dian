@@ -3,8 +3,8 @@
         <CustomTagGeneral>
             <Name>Responsable</Name>
             <Value>url www.minSalud.gov.co</Value>
-            <Name>Tipo, identificador:año del acto administrativo</Name>
-            <Value>Resolución 084:2021</Value>
+            <Name>Tipo, identificador:a&#xF1;o del acto administrativo</Name>
+            <Value>Resoluci&#xF3;n 084:2021</Value>
             <Interoperabilidad>
                 <Group schemeName="Sector Salud">
                     <Collection schemeName="Usuario">
@@ -26,13 +26,11 @@
                         </AdditionalInformation>
                         <AdditionalInformation>
                             <Name>MODALIDAD_PAGO</Name>
-                            <Value schemeID="04" schemeName="salud_modalidad_pago.gc">
-                                {{ $healt_sector['Modalidad_Contratacion'] }}</Value>
+                            <Value schemeID="04" schemeName="salud_modalidad_pago.gc">{{ $healt_sector['Modalidad_Contratacion'] }}</Value>
                         </AdditionalInformation>
                         <AdditionalInformation>
                             <Name>COBERTURA_PLAN_BENEFICIOS</Name>
-                            <Value schemeID="02" schemeName="salud_cobertuta.gc">
-                                {{ $healt_sector['Cobertura_Plan_Beneficios'] }}</Value>
+                            <Value schemeID="02" schemeName="salud_cobertuta.gc">{{ $healt_sector['Cobertura_Plan_Beneficios'] }}</Value>
                         </AdditionalInformation>
                         <AdditionalInformation>
                             <Name>NUMERO_CONTRATO</Name>
