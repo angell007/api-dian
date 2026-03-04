@@ -131,7 +131,10 @@ class InvoiceController extends Controller
 
         try {
             $responseDian = $client->getResponseToObject();
-            Log::channel('single')->debug('DIAN SendBillAsync response', json_encode($responseDian, JSON_PRETTY_PRINT));
+
+            Log::channel('single')->debug('DIAN SendBillAsync response', [
+                'response' => json_encode($responseDian, JSON_PRETTY_PRINT),
+            ]);
         } catch (\Exception $e) {
             Log::channel('single')->error('DIAN SendBillAsync exception', [
                 'file' => "fv{$request->file}.xml",
