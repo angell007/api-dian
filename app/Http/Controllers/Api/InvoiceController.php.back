@@ -34,16 +34,15 @@ class InvoiceController extends Controller
     public function store(InvoiceRequest $request)
     {
         // User
-        //  return 'asdasd';
-
         $user = auth()->user();
 
         $cufe_propio = $request->cufe_propio;
 
-        $healt_sector = $request->healt_sector;
+        $healt_sector = is_array($request->healt_sector ?? null) ? $request->healt_sector : null;
 
         // User company
         $company = $user->company;
+        $this->guardCertificateNit($company);
 
         // Type document
         $typeDocument = TypeDocument::findOrFail($request->type_document_id);
@@ -112,15 +111,6 @@ class InvoiceController extends Controller
             'healt_sector'
         ));
 
-        // Debug: Log XML generado antes de firmar (solo para facturas NoPos Mipres - FENP)
-        // if (isset($resolution->prefix) && $resolution->prefix === 'FENP' && isset($healt_sector) && !empty($healt_sector)) {
-        //     Log::info('XML generado antes de firmar - Factura NoPos Mipres', [
-        //         'factura' => $resolution->prefix . $request->number,
-        //         'xml' => $invoice->saveXML(),
-        //         'healt_sector' => $healt_sector
-        //     ]);
-        // }
-
         // Signature XML
         $signInvoice = new SignInvoice($company->certificate->path, $company->certificate->password);
         $softwareId = $request->software_id ?? $company->software->identifier;
@@ -128,89 +118,19 @@ class InvoiceController extends Controller
         $signInvoice->softwareID = $softwareId;
         $signInvoice->pin = $softwarePin;
         $signInvoice->technicalKey = $resolution->technical_key;
+        $signedInvoice = $signInvoice->sign($invoice);
 
         $sendBillAsync = new SendBillAsync($company->certificate->path, $company->certificate->password);
         $sendBillAsync->To = $company->software->url;
         $sendBillAsync->fileName = "fv{$request->file}.xml";
-        // Firmar XML
-        $signedInvoice = $signInvoice->sign($invoice);
-
-        // Debug: Log XML firmado (solo para facturas NoPos Mipres - FENP)
-        if (isset($resolution->prefix) && $resolution->prefix === 'FENP' && isset($healt_sector) && !empty($healt_sector)) {
-            Log::info('XML firmado - Factura NoPos Mipres', [
-                'Faactura' => $signedInvoice->getDocument()->saveXML(),
-                // 'cufe' => $signInvoice->getCufe()
-            ]);
-        }
-        
         $sendBillAsync->contentFile = $this->zipBase64($company, $resolution, $signedInvoice, $request->file);
 
-        // Debug: Log respuesta DIAN (solo para facturas NoPos Mipres - FENP)
-        $responseDian = $sendBillAsync->signToSend()->getResponseToObject();
-        if (isset($resolution->prefix) && $resolution->prefix === 'FENP' && isset($healt_sector) && !empty($healt_sector)) {
-            Log::info('Respuesta DIAN - Factura NoPos Mipres', [
-                'factura' => $resolution->prefix . $request->number,
-                'response' => $responseDian
-            ]);
-        }
-
-        // Verificar si hay errores en la respuesta de DIAN
-        // getResponseToObject() devuelve un objeto stdClass, usar notación de objeto
-        $result = isset($responseDian->Envelope->Body->SendBillSyncResponse->SendBillSyncResult)
-            ? $responseDian->Envelope->Body->SendBillSyncResponse->SendBillSyncResult
-            : null;
-        $isValid = ($result && isset($result->IsValid)) ? $result->IsValid : "false";
-        $statusMessage = ($result && isset($result->StatusMessage)) ? (string)$result->StatusMessage : "";
-        $errorMessages = ($result && isset($result->ErrorMessage)) ? $result->ErrorMessage : [];
-
-        // Determinar si hay errores
-        $hasErrors = false;
-        $errorText = "";
-
-        if ($isValid !== "true") {
-            $hasErrors = true;
-        }
-
-        if (!empty($errorMessages)) {
-            $hasErrors = true;
-            if (is_array($errorMessages)) {
-                $errorText = implode(" - ", array_filter($errorMessages, function ($e) {
-                    return !empty($e) && (is_string($e) || (is_array($e) && !empty($e)));
-                }));
-            } elseif (is_object($errorMessages)) {
-                // Si es un objeto, convertir a string
-                $errorText = json_encode($errorMessages);
-            } else {
-                $errorText = (string)$errorMessages;
-            }
-        }
-
-        // Si el StatusMessage indica error, también considerar como error
-        if (!empty($statusMessage) && (
-            stripos($statusMessage, "error") !== false ||
-            stripos($statusMessage, "rechazado") !== false ||
-            stripos($statusMessage, "invalid") !== false ||
-            stripos($statusMessage, "rejected") !== false
-        )) {
-            $hasErrors = true;
-            if (!empty($errorText)) {
-                $errorText .= " - " . $statusMessage;
-            } else {
-                $errorText = $statusMessage;
-            }
-        }
 
         return [
-            'message' => $hasErrors
-                ? "Error al procesar {$typeDocument->name} #{$resolution->prefix}{$request->number}: {$errorText}"
-                : "{$typeDocument->name} #{$resolution->prefix}{$request->number} generada con éxito",
+            'message' => "{$typeDocument->name} #{$resolution->prefix}{$request->number} generada con éxito",
             'cufe' =>  $signInvoice->getCufe(),
-            'ResponseDian' => $responseDian,
+            'ResponseDian' => $sendBillAsync->signToSend()->getResponseToObject(),
             'ZipBase64Bytes' => base64_encode($this->getZIP()),
-            'hasErrors' => $hasErrors,
-            'errorMessage' => $hasErrors ? $errorText : null,
-            // Incluir XML sin firmar en respuesta para debug (solo facturas FENP con sector salud)
-            'xml_preview' => (isset($resolution->prefix) && $resolution->prefix === 'FENP' && isset($healt_sector) && !empty($healt_sector)) ? $invoice->saveXML() : null,
         ];
     }
 
@@ -230,6 +150,7 @@ class InvoiceController extends Controller
 
         // User company
         $company = $user->company;
+        $this->guardCertificateNit($company);
 
         // Type document
         $typeDocument = TypeDocument::findOrFail($request->type_document_id);

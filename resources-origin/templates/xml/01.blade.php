@@ -12,7 +12,7 @@
     {{-- UBLExtensions --}}
     @include('xml._ubl_extensions')
     @if(isset($healt_sector) && !empty($healt_sector) && is_array($healt_sector) && isset($healt_sector['Codigo_Prestador']))
-    @include('xml.healt_sector',['healt_sector'=>$healt_sector])
+        @include('xml.healt_sector', ['healt_sector' => $healt_sector])
     @endif
     <cbc:UBLVersionID>UBL 2.1</cbc:UBLVersionID>
     @if(isset($healt_sector) && !empty($healt_sector) && is_array($healt_sector))
@@ -30,10 +30,12 @@
     <cbc:InvoiceTypeCode>{{$typeDocument->code}}</cbc:InvoiceTypeCode>
     <cbc:DocumentCurrencyCode>{{$company->type_currency->code}}</cbc:DocumentCurrencyCode>
     <cbc:LineCountNumeric>{{$invoiceLines->count()}}</cbc:LineCountNumeric>
-    @if(isset($healt_sector) && !empty($healt_sector) && is_array($healt_sector))
+    @if(isset($healt_sector) && !empty($healt_sector) && is_array($healt_sector)
+        && !empty($healt_sector['Fecha_Inicio_Periodo_Facturacion'])
+        && !empty($healt_sector['Fecha_Fin_Periodo_Facturacion']))
     <cac:InvoicePeriod>
-        <cbc:StartDate>{{ \Carbon\Carbon::now()->subDays(10)->format('Y-m-d') }}</cbc:StartDate>
-        <cbc:EndDate>{{ \Carbon\Carbon::now()->format('Y-m-d') }}</cbc:EndDate>
+        <cbc:StartDate>{{ $healt_sector['Fecha_Inicio_Periodo_Facturacion'] }}</cbc:StartDate>
+        <cbc:EndDate>{{ $healt_sector['Fecha_Fin_Periodo_Facturacion'] }}</cbc:EndDate>
     </cac:InvoicePeriod>
     @endif
     {{-- AccountingSupplierParty --}}

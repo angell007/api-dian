@@ -118,20 +118,10 @@ Route::middleware('auth:api')->group(function () {
         });
         
     });
-
-    // XML para RIPS FEV (invoice y attached)
-    Route::prefix('/xml')->group(function () {
-        Route::get('/invoice/{resolution_id}/{filename}', 'Api\XmlController@invoice');
-        Route::get('/attached/{resolution_id}/{filename}', 'Api\XmlController@attached');
-    });
 });
 
 
-Route::post('/testt', function(){
-        Artisan::call('cache:clear');
-        Artisan::call('config:clear');
-        Artisan::call('route:clear');
-        Artisan::call('view:clear');
-        return "Cache limpio!";
-});
+            Route::post('/testt', function(){
+                return 'ok';
+            });
      

@@ -12,8 +12,8 @@
     {{-- UBLExtensions --}}
     @include('xml._ubl_extensions')
     <cbc:UBLVersionID>UBL 2.1</cbc:UBLVersionID>
-    <cbc:CustomizationID>{{ $customizationId ?? $company->type_operation->code }}</cbc:CustomizationID>
-    <cbc:ProfileID>DIAN 2.1: Nota Cr®¶dito de Factura Electr®Ænica de Venta</cbc:ProfileID>
+    <cbc:CustomizationID>{{$company->type_operation->code}}</cbc:CustomizationID>
+    <cbc:ProfileID>DIAN 2.1: Nota Cr√©dito de Factura Electr√≥nica de Venta</cbc:ProfileID>
     <cbc:ProfileExecutionID>{{$company->type_environment->code}}</cbc:ProfileExecutionID>
     <cbc:ID>{{$resolution->next_consecutive}}</cbc:ID>
     <cbc:UUID schemeID="{{$company->type_environment->code}}" schemeName="{{$typeDocument->cufe_algorithm}}"/>

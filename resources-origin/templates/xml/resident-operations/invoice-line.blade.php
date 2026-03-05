@@ -7,31 +7,10 @@
     <cbc:InvoicedQuantity unitCode="{{$invoiceLine->unit_measure->code}}">{{number_format($invoiceLine->invoiced_quantity, 6, '.', '')}}</cbc:InvoicedQuantity>
     <cbc:LineExtensionAmount currencyID="{{$company->type_currency->code}}">{{number_format($invoiceLine->line_extension_amount, 2, '.', '')}}</cbc:LineExtensionAmount>
       
-    @php
-        $period = $invoiceLine->invoice_period ?? null;
-        $descriptionCode = $period->description_code ?? null;
-        $startDate = $period->date ?? $date;
-        $description = $period->description ?? '';
-        $descriptionIsEntity = false;
-
-        if ((string) $descriptionCode === '1') {
-            $startDate = $date;
-            $description = 'Por operaci&#xF3;n';
-            $descriptionIsEntity = true;
-        } elseif ((string) $descriptionCode === '2') {
-            $description = 'Acumulado semanal';
-        } elseif ((string) $descriptionCode === '3') {
-            $description = 'Acumulado mensual';
-        }
-    @endphp
     <cac:InvoicePeriod>
-        <cbc:StartDate>{{$startDate}}</cbc:StartDate>
-        <cbc:DescriptionCode>{{$descriptionCode}}</cbc:DescriptionCode>
-        @if ($descriptionIsEntity)
-            <cbc:Description>{!! $description !!}</cbc:Description>
-        @else
-            <cbc:Description>{{$description}}</cbc:Description>
-        @endif
+        <cbc:StartDate>{{$invoiceLine->invoice_period->date}}</cbc:StartDate>
+        <cbc:DescriptionCode>{{$invoiceLine->invoice_period->description_code}}</cbc:DescriptionCode>
+        <cbc:Description>{{$invoiceLine->invoice_period->description}}</cbc:Description>
     </cac:InvoicePeriod>
     
     @foreach ($invoiceLine->allowance_charges as $key => $allowanceCharge)
@@ -113,19 +92,9 @@
             @endif
             </cac:SellersItemIdentification>
          @endif
-        @php
-    // Para documentos soporte, usar código 999
-    $schemeId = '999';
-    $schemeName = 'Estándar de adopción del contribuyente';
-    $schemeAgency = '195';
-@endphp
-<cac:StandardItemIdentification>
-    <cbc:ID schemeID="{{$schemeId}}" 
-            schemeName="{{$schemeName}}" 
-            schemeAgencyID="{{$schemeAgency}}">
-        {{$invoiceLine->code}}
-    </cbc:ID>
-</cac:StandardItemIdentification>
+        <cac:StandardItemIdentification>
+                <cbc:ID schemeID="{{$invoiceLine->type_item_identification->code}}" schemeName="EAN13" schemeAgencyID="{{$invoiceLine->type_item_identification->code_agency}}">{{$invoiceLine->code}}</cbc:ID>
+        </cac:StandardItemIdentification>
     </cac:Item>
 
 
@@ -139,3 +108,4 @@
 
 
 @endforeach
+

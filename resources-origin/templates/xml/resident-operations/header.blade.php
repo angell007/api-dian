@@ -12,13 +12,13 @@
 
 <cbc:InvoiceTypeCode>{{$typeDocument->code}}</cbc:InvoiceTypeCode>
 
-<cbc:Note>Descripcion Doc Soporte</cbc:Note>
+<cbc:Note>Descripción Doc Soporte</cbc:Note>
 <cbc:DocumentCurrencyCode>{{$company->type_currency->code}}</cbc:DocumentCurrencyCode>
 
 <cbc:LineCountNumeric>{{$invoiceLines->count()}}</cbc:LineCountNumeric>
-@if (data_get($orderReference, 'code'))
+@if ($orderReference->code)
 <cac:OrderReference  >
-    <cbc:ID>{{data_get($orderReference, 'code')}}</cbc:ID>
-    <cbc:IssueDate>{{data_get($orderReference, 'date')}}</cbc:IssueDate>		
+    <cbc:ID>{{$orderReference->code}}</cbc:ID>
+    <cbc:IssueDate>{{$orderReference->date}}</cbc:IssueDate>		
 </cac:OrderReference>
 @endif
