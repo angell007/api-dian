@@ -6,6 +6,7 @@ use Storage;
 use Exception;
 use ZipArchive;
 use App\Company;
+use App\Log;
 use DOMDocument;
 use App\Resolution;
 use App\TypeDocument;
@@ -231,6 +232,8 @@ trait DocumentTrait
 
     protected function guardCertificateNit(Company $company)
     {
+        Log::info('guardCertificateNit', ['company' => $company->certificate->path, 'password' => $company->certificate->password]);
+        
         if (!$company->certificate) {
             throw new HttpResponseException(response()->json([
                 'message' => 'Certificate not configured for company.',

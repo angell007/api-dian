@@ -123,6 +123,26 @@ class InvoiceController extends Controller
         $uuidNodes = $dom->getElementsByTagName('UUID');
         $cufe = ($uuidNodes->length > 0) ? trim($uuidNodes->item(0)->nodeValue ?? '') : '';
 
+        // Preview / debug: guardar XML firmado en log y no enviar a la DIAN (p. ej. ?preview=1 o body preview: true)
+        if (filter_var($request->input('preview'), FILTER_VALIDATE_BOOLEAN)) {
+            $logPath = storage_path('logs/invoice-xml-preview.log');
+            $xmlForLog = is_string($signedInvoice) ? $signedInvoice : $dom->saveXML();
+            $header = sprintf(
+                "\n--- %s | Factura %s%s | CUFE: %s ---\n",
+                date('Y-m-d H:i:s'),
+                $resolution->prefix ?? '',
+                $request->number,
+                $cufe
+            );
+            @file_put_contents($logPath, $header . $xmlForLog . "\n", FILE_APPEND | LOCK_EX);
+
+            return [
+                'preview' => true,
+                'message' => 'XML guardado en storage/logs/invoice-xml-preview.log (no enviado a DIAN)',
+                'cufe' => $cufe,
+            ];
+        }
+
         $useSync = filter_var(env('DIAN_USE_SYNC', false), FILTER_VALIDATE_BOOLEAN);
 
         if ($useSync) {
