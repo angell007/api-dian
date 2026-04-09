@@ -113,13 +113,13 @@ class InvoiceController extends Controller
         ));
 
         // Debug: Log XML generado antes de firmar (solo para facturas NoPos Mipres - FENP)
-        // if (isset($resolution->prefix) && $resolution->prefix === 'FENP' && isset($healt_sector) && !empty($healt_sector)) {
-        //     Log::info('XML generado antes de firmar - Factura NoPos Mipres', [
-        //         'factura' => $resolution->prefix . $request->number,
-        //         'xml' => $invoice->saveXML(),
-        //         'healt_sector' => $healt_sector
-        //     ]);
-        // }
+        if (isset($resolution->prefix) && $resolution->prefix === 'FENP' || $resolution->prefix === 'FEEP' && isset($healt_sector) && !empty($healt_sector)) {
+            Log::info('XML generado antes de firmar - Factura NoPos Mipres', [
+                'factura' => $resolution->prefix . $request->number,
+                'xml' => $invoice->saveXML(),
+                'healt_sector' => $healt_sector
+            ]);
+        }
 
         // Signature XML
         $signInvoice = new SignInvoice($company->certificate->path, $company->certificate->password);
@@ -142,7 +142,7 @@ class InvoiceController extends Controller
                 // 'cufe' => $signInvoice->getCufe()
             ]);
         }
-        
+
         $sendBillAsync->contentFile = $this->zipBase64($company, $resolution, $signedInvoice, $request->file);
 
         // Debug: Log respuesta DIAN (solo para facturas NoPos Mipres - FENP)
