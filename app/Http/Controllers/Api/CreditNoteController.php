@@ -36,6 +36,7 @@ class CreditNoteController extends Controller
         // User
         $user = auth()->user();
         $cufe_propio = $request->cufe_propio;
+        $healt_sector = $request->healt_sector;
         // User company
         $company = $user->company;
 
@@ -89,7 +90,7 @@ class CreditNoteController extends Controller
         $billingReference = new BillingReference($request->billing_reference);
 
         // Create XML
-        $crediNote = $this->createXML(compact('user', 'company', 'customer', 'taxTotals', 'resolution', 'paymentForm', 'typeDocument', 'creditNoteLines', 'allowanceCharges', 'legalMonetaryTotals', 'billingReference', 'date', 'time','cufe_propio'));
+        $crediNote = $this->createXML(compact('user', 'company', 'customer', 'taxTotals', 'resolution', 'paymentForm', 'typeDocument', 'creditNoteLines', 'allowanceCharges', 'legalMonetaryTotals', 'billingReference', 'date', 'time','cufe_propio', 'healt_sector'));
 
         // Signature XML
         $signCreditNote = new SignCreditNote($company->certificate->path, $company->certificate->password);
