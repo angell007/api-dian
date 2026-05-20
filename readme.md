@@ -41,4 +41,3 @@ El marco del API es un software de código abierto con licencia [LGPL](https://w
 Si este proyecto te ayuda a reducir el tiempo de tu desarrollo, puedes regalarnos una taza de café :smiley:.
 
 [![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.me/stenfrank/1?locale.x=es_XC)
-"# api-dian" 
