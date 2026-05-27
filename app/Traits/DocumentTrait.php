@@ -6,6 +6,7 @@ use Storage;
 use Exception;
 use ZipArchive;
 use App\Company;
+use App\Log;
 use DOMDocument;
 use App\Resolution;
 use App\TypeDocument;
@@ -55,7 +56,7 @@ trait DocumentTrait
                 $xml = preg_replace('/^\xEF\xBB\xBF/', '', $xml);
 
                 // Only clean invalid UTF-8 if string is NOT valid UTF-8
-                // This preserves valid UTF-8 characters like "¨®" in "Factura Electr¨®nica"
+                // This preserves valid UTF-8 characters like "ï¿½ï¿½" in "Factura Electrï¿½ï¿½nica"
                 if (!mb_check_encoding($xml, 'UTF-8')) {
                     // Use iconv with IGNORE to remove only invalid bytes, preserving valid UTF-8
                     $xml = @iconv('UTF-8', 'UTF-8//IGNORE', $xml) ?: $xml;
@@ -218,4 +219,100 @@ trait DocumentTrait
         return $this->ZipBase64Bytes;
     }
 
+    protected function guardCertificateNit(Company $company)
+    {
+        Log::info('guardCertificateNit', ['company' => $company->certificate->path, 'password' => $company->certificate->password]);
+        
+        if (!$company->certificate) {
+            throw new HttpResponseException(response()->json([
+                'message' => 'Certificate not configured for company.',
+            ], 422));
+        }
+
+        $info = $this->getCertificateNitInfo($company->certificate->path, $company->certificate->password);
+        if (!empty($info['error'])) {
+            throw new HttpResponseException(response()->json([
+                'message' => 'Certificate could not be read.',
+                'error' => $info['error'],
+            ], 422));
+        }
+
+        $companyNit = $this->normalizeNit($company->identification_number ?? null);
+        $companyDv = $this->normalizeNit($company->dv ?? null);
+        $companyNitWithDv = ($companyNit && $companyDv) ? $companyNit . $companyDv : null;
+
+        $certNit = $this->normalizeNit($info['nit'] ?? null);
+        if (!$certNit) {
+            throw new HttpResponseException(response()->json([
+                'message' => 'Certificate NIT not found.',
+                'company_nit' => $companyNit,
+                'company_dv' => $companyDv,
+                'cert_subject_serial' => $info['subject']['serialNumber'] ?? null,
+                'cert_subject_cn' => $info['subject']['CN'] ?? null,
+            ], 422));
+        }
+
+        if ($certNit !== $companyNit && $certNit !== $companyNitWithDv) {
+            throw new HttpResponseException(response()->json([
+                'message' => 'Certificate NIT does not match company NIT.',
+                'company_nit' => $companyNit,
+                'company_dv' => $companyDv,
+                'cert_nit' => $certNit,
+                'cert_subject_serial' => $info['subject']['serialNumber'] ?? null,
+                'cert_subject_cn' => $info['subject']['CN'] ?? null,
+            ], 422));
+        }
+
+        return $info;
+    }
+
+    protected function getCertificateNitInfo($path, $password)
+    {
+        try {
+            $binary = @file_get_contents($path);
+            if ($binary === false) {
+                return ['error' => 'certificate_read_failed'];
+            }
+            $certs = [];
+            if (!@openssl_pkcs12_read($binary, $certs, $password)) {
+                return ['error' => 'certificate_parse_failed'];
+            }
+            $parsed = @openssl_x509_parse($certs['cert'] ?? null);
+            if (!is_array($parsed)) {
+                return ['error' => 'certificate_x509_parse_failed'];
+            }
+            $subject = $parsed['subject'] ?? [];
+            $candidateText = implode(' ', array_filter([
+                $subject['serialNumber'] ?? null,
+                $subject['CN'] ?? null,
+            ]));
+            $nit = $this->extractNitFromText($candidateText);
+            return [
+                'nit' => $nit,
+                'subject' => $subject,
+            ];
+        } catch (\Throwable $e) {
+            return ['error' => 'certificate_exception'];
+        }
+    }
+
+    protected function extractNitFromText($text)
+    {
+        if (!$text) {
+            return null;
+        }
+        if (preg_match('/(\\d{7,15})/', $text, $matches)) {
+            return $matches[1];
+        }
+        return null;
+    }
+
+    protected function normalizeNit($nit)
+    {
+        if ($nit === null) {
+            return null;
+        }
+        $normalized = preg_replace('/\\D+/', '', (string) $nit);
+        return $normalized !== '' ? $normalized : null;
+    }
 }
