@@ -17,7 +17,7 @@
     @endif
     <cbc:UBLVersionID>UBL 2.1</cbc:UBLVersionID>
     @if (isset($healt_sector) && !empty($healt_sector) && is_array($healt_sector))
-        <cbc:CustomizationID>SS-SinAporte</cbc:CustomizationID>
+        <cbc:CustomizationID>20</cbc:CustomizationID>
     @else
         <cbc:CustomizationID>{{ $company->type_operation->code }}</cbc:CustomizationID>
     @endif

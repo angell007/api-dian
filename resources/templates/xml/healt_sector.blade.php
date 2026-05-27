@@ -26,11 +26,11 @@
                         </AdditionalInformation>
                         <AdditionalInformation>
                             <Name>MODALIDAD_PAGO</Name>
-                            <Value schemeID="04" schemeName="salud_modalidad_pago.gc">{{ $healt_sector['Modalidad_Contratacion'] }}</Value>
+                            <Value schemeID="{{ $healt_sector['Modalidad_schemeID'] ?? '' }}" schemeName="salud_modalidad_pago.gc">{{ $healt_sector['Modalidad_Contratacion'] }}</Value>
                         </AdditionalInformation>
                         <AdditionalInformation>
                             <Name>COBERTURA_PLAN_BENEFICIOS</Name>
-                            <Value schemeID="02" schemeName="salud_cobertuta.gc">{{ $healt_sector['Cobertura_Plan_Beneficios'] }}</Value>
+                            <Value schemeID="{{ $healt_sector['Cobertura_schemeID'] ?? '' }}" schemeName="salud_cobertuta.gc">{{ $healt_sector['Cobertura_Plan_Beneficios'] }}</Value>
                         </AdditionalInformation>
                         <AdditionalInformation>
                             <Name>NUMERO_CONTRATO</Name>
