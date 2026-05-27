@@ -224,6 +224,27 @@ class InvoiceController extends Controller
         );
 
         if ($parsed['error_response']) {
+            $syncResult = $this->getSendBillSyncResult($responseDian);
+            $isValidSync = ($syncResult->IsValid ?? '') === 'true';
+            if ($isValidSync) {
+                $xmlDocKeyVal = $syncResult->XmlDocumentKey ?? null;
+                $xmlDocKey = is_object($xmlDocKeyVal)
+                    ? ($xmlDocKeyVal->_value ?? (string) $xmlDocKeyVal)
+                    : $xmlDocKeyVal;
+                $cufeFinal = $xmlDocKey ? trim((string) $xmlDocKey) : $cufe;
+                $statusDesc = $syncResult->StatusDescription ?? '';
+
+                return [
+                    'message' => $statusDesc ?: "{$typeDocument->name} #{$docId} generada con éxito",
+                    'cufe' => $cufeFinal,
+                    'zip_key' => null,
+                    'dian_errors' => null,
+                    'consulta_estado' => null,
+                    'ResponseDian' => $responseDian,
+                    'ZipBase64Bytes' => base64_encode($this->getZIP()),
+                ];
+            }
+
             return $parsed['error_response'];
         }
 
