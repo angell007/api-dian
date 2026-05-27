@@ -98,12 +98,15 @@ trait DianSendBillTrait
             $p = $m[0];
         }
 
-        if ($p === 'FEEP') {
+        if ($p === 'FECA') {
+            $healt_sector['Modalidad_Contratacion'] = 'Pago por capitación';
+            $healt_sector['Cobertura_Plan_Beneficios'] = 'Plan de beneficios en salud financiados con UPC';
+            $healt_sector['Modalidad_schemeID'] = '03';
+            $healt_sector['Cobertura_schemeID'] = '01';
+        } elseif ($p === 'FEEP') {
             $healt_sector['Modalidad_Contratacion'] = 'Por servicio';
             $healt_sector['Cobertura_Plan_Beneficios'] = 'Plan de beneficios en salud financiado con UPC';
-        }
-
-        if ($p === 'FENP') {
+        } elseif ($p === 'FENP') {
             $healt_sector['Modalidad_Contratacion'] = 'Pago por evento';
             $healt_sector['Cobertura_Plan_Beneficios'] = 'Presupuesto maximo';
         }
