@@ -112,7 +112,8 @@ class InvoiceController extends Controller
         $softwarePin = $request->software_pin ?? $company->software->pin;
         $signInvoice->softwareID = $softwareId;
         $signInvoice->pin = $softwarePin;
-        $signInvoice->technicalKey = $resolution->technical_key;
+        $technicalKey = trim((string) ($request->technical_key ?? ''));
+        $signInvoice->technicalKey = $technicalKey !== '' ? $technicalKey : $resolution->technical_key;
         $signedInvoice = $signInvoice->sign($invoice);
 
         $dom = $signInvoice->getDocument();
@@ -316,7 +317,8 @@ class InvoiceController extends Controller
         $softwarePin = $request->software_pin ?? $company->software->pin;
         $signInvoice->softwareID = $softwareId;
         $signInvoice->pin = $softwarePin;
-        $signInvoice->technicalKey = $resolution->technical_key;
+        $technicalKey = trim((string) ($request->technical_key ?? ''));
+        $signInvoice->technicalKey = $technicalKey !== '' ? $technicalKey : $resolution->technical_key;
 
         $sendTestSetAsync = new SendTestSetAsync($company->certificate->path, $company->certificate->password);
         $sendTestSetAsync->To = $company->software->url;
