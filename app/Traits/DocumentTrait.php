@@ -6,8 +6,8 @@ use Storage;
 use Exception;
 use ZipArchive;
 use App\Company;
-use App\Log;
 use DOMDocument;
+use Illuminate\Support\Facades\Log;
 use App\Resolution;
 use App\TypeDocument;
 use InvalidArgumentException;
@@ -221,8 +221,12 @@ trait DocumentTrait
 
     protected function guardCertificateNit(Company $company)
     {
-        Log::info('guardCertificateNit', ['company' => $company->certificate->path, 'password' => $company->certificate->password]);
-        
+        if ((bool) config('dian_debug.verbose', false)) {
+            Log::info('guardCertificateNit', [
+                'certificate_path' => $company->certificate ? $company->certificate->path : null,
+            ]);
+        }
+
         if (!$company->certificate) {
             throw new HttpResponseException(response()->json([
                 'message' => 'Certificate not configured for company.',
