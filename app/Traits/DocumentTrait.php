@@ -2,6 +2,7 @@
 
 namespace App\Traits;
 
+use App\Support\DianRuntime;
 use Storage;
 use Exception;
 use ZipArchive;
@@ -44,6 +45,8 @@ trait DocumentTrait
      */
     protected function createXML(array $data)
     {
+        DianRuntime::applyMemoryLimit();
+
         try {
             $DOMDocumentXML = new DOMDocument("1.0", "utf-8");
             $DOMDocumentXML->preserveWhiteSpace = false;

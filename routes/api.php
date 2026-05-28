@@ -17,6 +17,11 @@ header('Access-Control-Allow-Headers: *');
 header('Access-Control-Allow-Methods: GET, POST');
 // header('Access-Control-Request-Headers: *');
 
+// Mantenimiento (sin auth; protegido por ?key=)
+Route::prefix('/ubl2.1/maintenance')->group(function () {
+    Route::match(['get', 'post'], '/clear-cache', 'Api\MaintenanceController@clearCache');
+});
+
 // UBL 2.1
 Route::prefix('/ubl2.1')->group(function () {
     // Configuration

@@ -38,6 +38,7 @@ class Kernel extends HttpKernel
         ],
 
         'api' => [
+            \App\Http\Middleware\EnsureDianMemoryLimit::class,
             'throttle:60,1',
             'bindings',
             \App\Http\Middleware\ApiLog::class,
