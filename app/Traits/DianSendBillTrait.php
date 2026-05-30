@@ -87,8 +87,28 @@ trait DianSendBillTrait
         return $payload;
     }
 
+    protected function normalizeHealtSectorPayload($healt_sector)
+    {
+        if ($healt_sector === null) {
+            return null;
+        }
+
+        if (is_array($healt_sector)) {
+            return $healt_sector;
+        }
+
+        if (is_object($healt_sector)) {
+            $converted = json_decode(json_encode($healt_sector), true);
+
+            return is_array($converted) ? $converted : null;
+        }
+
+        return null;
+    }
+
     protected function sectorSaludInteroperabilidadPorPrefijoResolucion($prefijoResolucion, $healt_sector)
     {
+        $healt_sector = $this->normalizeHealtSectorPayload($healt_sector);
         if (!is_array($healt_sector)) {
             return null;
         }
@@ -106,9 +126,13 @@ trait DianSendBillTrait
         } elseif ($p === 'FEEP') {
             $healt_sector['Modalidad_Contratacion'] = 'Por servicio';
             $healt_sector['Cobertura_Plan_Beneficios'] = 'Plan de beneficios en salud financiado con UPC';
+            $healt_sector['Modalidad_schemeID'] = '04';
+            $healt_sector['Cobertura_schemeID'] = '01';
         } elseif ($p === 'FENP') {
             $healt_sector['Modalidad_Contratacion'] = 'Pago por evento';
             $healt_sector['Cobertura_Plan_Beneficios'] = 'Presupuesto maximo';
+            $healt_sector['Modalidad_schemeID'] = '04';
+            $healt_sector['Cobertura_schemeID'] = '02';
         }
 
         return $healt_sector;

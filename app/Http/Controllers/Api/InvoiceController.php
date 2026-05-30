@@ -38,7 +38,7 @@ class InvoiceController extends Controller
         $user = auth()->user();
 
         $cufe_propio = $request->cufe_propio;
-        $healt_sector = is_array($request->healt_sector ?? null) ? $request->healt_sector : null;
+        $healt_sector = $this->normalizeHealtSectorPayload($request->healt_sector ?? null);
 
         $company = $user->company;
         $this->guardCertificateNit($company);
