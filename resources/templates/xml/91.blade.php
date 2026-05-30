@@ -16,11 +16,8 @@
         @include('xml.healt_sector', ['healt_sector' => $healt_sector])
     @endif
     <cbc:UBLVersionID>UBL 2.1</cbc:UBLVersionID>
-    @if (isset($healt_sector) && !empty($healt_sector) && is_array($healt_sector))
-        <cbc:CustomizationID>20</cbc:CustomizationID>
-    @else
-        <cbc:CustomizationID>{{ $company->type_operation->code }}</cbc:CustomizationID>
-    @endif
+    {{-- Nota crédito que referencia factura electrónica de venta: CustomizationID 20 (regla CAD02). --}}
+    <cbc:CustomizationID>20</cbc:CustomizationID>
     <cbc:ProfileID>DIAN 2.1: Nota Crédito de Factura Electrónica de Venta</cbc:ProfileID>
     <cbc:ProfileExecutionID>{{ $company->type_environment->code }}</cbc:ProfileExecutionID>
     <cbc:ID>{{ $resolution->next_consecutive }}</cbc:ID>
