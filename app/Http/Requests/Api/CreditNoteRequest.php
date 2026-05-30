@@ -42,6 +42,9 @@ class CreditNoteRequest extends FormRequest
             // Consecutive
             'number' => 'required|integer|between:'.optional($this->resolution)->from.','.optional($this->resolution)->to,
 
+            // CustomizationID UBL (lo envía Sigespro; no usar type_operation de la empresa)
+            'customization_id' => 'required',
+
             // Billing Reference
             'billing_reference' => 'required|array',
             'billing_reference.number' => 'required|string',
@@ -126,6 +129,16 @@ class CreditNoteRequest extends FormRequest
             'credit_note_lines.*.type_item_identification_id' => 'required|exists:type_item_identifications,id',
             'credit_note_lines.*.price_amount' => 'required|numeric',
             'credit_note_lines.*.base_quantity' => 'required|numeric',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages()
+    {
+        return [
+            'customization_id.required' => 'Falta el campo customization_id en el JSON de la nota crédito. Debe enviarlo el sistema emisor (ej. 20 para NC que referencia factura electrónica de venta).',
         ];
     }
 }

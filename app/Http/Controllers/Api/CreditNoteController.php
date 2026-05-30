@@ -91,6 +91,8 @@ class CreditNoteController extends Controller
 
         $billingReference = new BillingReference($request->billing_reference);
 
+        $customization_id = trim((string) $request->input('customization_id'));
+
         $crediNote = $this->createXML(compact(
             'user',
             'company',
@@ -106,7 +108,8 @@ class CreditNoteController extends Controller
             'date',
             'time',
             'cufe_propio',
-            'healt_sector'
+            'healt_sector',
+            'customization_id'
         ));
 
         $signCreditNote = new SignCreditNote($company->certificate->path, $company->certificate->password);
@@ -236,7 +239,24 @@ class CreditNoteController extends Controller
 
         $billingReference = new BillingReference($request->billing_reference);
 
-        $crediNote = $this->createXML(compact('user', 'company', 'customer', 'taxTotals', 'resolution', 'paymentForm', 'typeDocument', 'creditNoteLines', 'allowanceCharges', 'legalMonetaryTotals', 'billingReference', 'date', 'time'));
+        $customization_id = trim((string) $request->input('customization_id'));
+
+        $crediNote = $this->createXML(compact(
+            'user',
+            'company',
+            'customer',
+            'taxTotals',
+            'resolution',
+            'paymentForm',
+            'typeDocument',
+            'creditNoteLines',
+            'allowanceCharges',
+            'legalMonetaryTotals',
+            'billingReference',
+            'date',
+            'time',
+            'customization_id'
+        ));
 
         $signCreditNote = new SignCreditNote($company->certificate->path, $company->certificate->password);
         $signCreditNote->softwareID = $company->software->identifier;
