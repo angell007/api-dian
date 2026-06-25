@@ -52,7 +52,13 @@ class CreditNoteController extends Controller
         $request->resolution->next_consecutive = $request->number;
         $resolution = $request->resolution;
 
-        $healt_sector = $this->sectorSaludInteroperabilidadPorPrefijoResolucion($resolution->prefix, $healt_sector);
+        $codigoFacturaOrigen = $request->billing_reference['number'] ?? '';
+        $healt_sector = $this->sectorSaludInteroperabilidadPorPrefijoResolucion($codigoFacturaOrigen, $healt_sector);
+
+        $errorSectorSalud = $this->validarSectorSaludNotaCreditoObligatorio($codigoFacturaOrigen, $healt_sector);
+        if ($errorSectorSalud !== null) {
+            return response()->json($errorSectorSalud, 422);
+        }
 
         if ($this->isDianDebugVerbose()) {
             Log::info('Credit note store', [

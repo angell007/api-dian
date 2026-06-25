@@ -138,6 +138,68 @@ trait DianSendBillTrait
         return $healt_sector;
     }
 
+    protected function facturaOrigenRequiereSectorSalud($codigoFactura): bool
+    {
+        $codigo = strtoupper(trim((string) $codigoFactura));
+
+        return $codigo !== '' && preg_match('/^(FENP|FEEP)/', $codigo);
+    }
+
+    /**
+     * @return array<string, mixed>|null Respuesta 422 si falta sector salud obligatorio.
+     */
+    protected function validarSectorSaludNotaCreditoObligatorio($codigoFacturaOrigen, $healt_sector): ?array
+    {
+        if (!$this->facturaOrigenRequiereSectorSalud($codigoFacturaOrigen)) {
+            return null;
+        }
+
+        $healt = $this->normalizeHealtSectorPayload($healt_sector);
+        $camposRequeridos = [
+            'Codigo_Prestador',
+            'Tipo_Documento_Identificacion',
+            'Numero_Documento_Identificacion',
+            'Primer_Nombre',
+            'Modalidad_Contratacion',
+            'Cobertura_Plan_Beneficios',
+            'Numero_Contrato',
+            'Fecha_Inicio_Periodo_Facturacion',
+            'Fecha_Fin_Periodo_Facturacion',
+        ];
+
+        if (!is_array($healt) || empty($healt['Codigo_Prestador'])) {
+            return [
+                'message' => 'La factura origen es del sector salud (FENP/FEEP). '
+                    . 'La nota crédito debe incluir healt_sector en el JSON/XML antes de enviarse a la DIAN.',
+                'errors' => [
+                    'healt_sector' => [
+                        'Falta el bloque de interoperabilidad del sector salud para anular correctamente ante el MSPS.',
+                    ],
+                ],
+            ];
+        }
+
+        $faltantes = [];
+        foreach ($camposRequeridos as $campo) {
+            if (!isset($healt[$campo]) || $healt[$campo] === '') {
+                $faltantes[] = $campo;
+            }
+        }
+
+        if (!empty($faltantes)) {
+            return [
+                'message' => 'Campos obligatorios del sector salud incompletos en la nota crédito.',
+                'errors' => [
+                    'healt_sector' => [
+                        'Faltan: ' . implode(', ', $faltantes),
+                    ],
+                ],
+            ];
+        }
+
+        return null;
+    }
+
     private function extractZipKeyFromDianResponse($response): ?string
     {
         $result = $this->getSendBillAsyncResult($response);
